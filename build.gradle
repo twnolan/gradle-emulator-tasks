@@ -1,0 +1,79 @@
+String androidGroup = 'Android Pre-Test Commands'
+
+task listEmulators(type: Exec) {
+    group androidGroup
+    description 'lists all emulators on host machine'
+    commandLine 'bash', '-c', 'avdmanager list avd | grep "Name"'
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString()
+    }
+}
+
+task runEmulatorAndroidM(dependsOn: listEmulators) {
+    group androidGroup
+    description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-M)'
+    String versionName = "ANDROID-M"
+    doFirst {
+        if(listEmulators.output().contains(versionName)) {
+            println("emulator exists")
+        } else {
+            println("emulator not found, creating a new emulator")
+            exec {
+                commandLine 'bash', '-c', 'echo no | avdmanager create avd -n "ANDROID-M" -c 1000M -k "system-images;android-23;google_apis;x86"'
+            }
+        }
+    }
+    doLast {
+        println("starting emulator")
+        exec {
+            commandLine 'bash', '-c', '$(dirname "$(which emulator)")"/emulator -avd ANDROID-M'
+        }
+    }
+}
+
+task runEmulatorAndroidN(dependsOn: listEmulators) {
+    group androidGroup
+    description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-N)'
+    String versionName = "ANDROID-N"
+    doFirst {
+        if(listEmulators.output().contains(versionName)) {
+            println("emulator exists")
+        } else {
+            println("emulator not found, creating a new emulator")
+            exec {
+                commandLine 'bash', '-c', 'echo no | avdmanager create avd -n "ANDROID-N" -c 1000M -k "system-images;android-25;google_apis_playstore;x86"'
+            }
+        }
+    }
+    doLast {
+        println("starting emulator")
+        exec {
+            commandLine 'bash', '-c', '"$(dirname "$(which emulator)")"/emulator -avd ANDROID-N'
+        }
+    }
+}
+
+task createEmulatorAndroidO(dependsOn: listEmulators) {
+    group androidGroup
+    description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-O)'
+    String versionName = "ANDROID-O"
+    doFirst {
+        if(listEmulators.output().contains(versionName)) {
+            println("emulator exists")
+        } else {
+            println("emulator not found, creating a new emulator")
+            exec {
+                commandLine 'bash', '-c', 'echo no | avdmanager create avd -n "ANDROID-O" -c 1000M -k "system-images;android-27;google_apis_playstore;x86"'
+            }
+        }
+    }
+    doLast {
+        println("starting emulator")
+        exec {
+            commandLine 'bash', '-c', '"$(dirname "$(which emulator)")"/emulator -avd ANDROID-O'
+        }
+    }
+}
+
+
