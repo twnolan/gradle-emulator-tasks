@@ -10,70 +10,118 @@ task listEmulators(type: Exec) {
     }
 }
 
-task runEmulatorAndroidM(dependsOn: listEmulators) {
+task createAndRunEmulatorAndroidM(dependsOn: listEmulators) {
     group androidGroup
     description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-M)'
     String versionName = "ANDROID-M"
+    String systemImageName = "system-images;android-23;google_apis;x86"
     doFirst {
-        if(listEmulators.output().contains(versionName)) {
-            println("emulator exists")
-        } else {
-            println("emulator not found, creating a new emulator")
-            exec {
-                commandLine 'bash', '-c', 'echo no | avdmanager create avd -n "ANDROID-M" -c 1000M -k "system-images;android-23;google_apis;x86"'
-            }
-        }
+        String existingEmulators = listEmulators.output()
+        createEmulatorIfItDoesNotItExist(existingEmulators, versionName, systemImageName)
     }
     doLast {
-        println("starting emulator")
-        exec {
-            commandLine 'bash', '-c', '$(dirname "$(which emulator)")"/emulator -avd ANDROID-M'
-        }
+        startEmulator(versionName)
     }
 }
 
-task runEmulatorAndroidN(dependsOn: listEmulators) {
+task createAndRunEmulatorAndroidN(dependsOn: listEmulators) {
     group androidGroup
     description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-N)'
     String versionName = "ANDROID-N"
+    String systemImageName = "system-images;android-25;google_apis_playstore;x86"
     doFirst {
-        if(listEmulators.output().contains(versionName)) {
-            println("emulator exists")
-        } else {
-            println("emulator not found, creating a new emulator")
-            exec {
-                commandLine 'bash', '-c', 'echo no | avdmanager create avd -n "ANDROID-N" -c 1000M -k "system-images;android-25;google_apis_playstore;x86"'
-            }
-        }
+        String existingEmulators = listEmulators.output()
+        createEmulatorIfItDoesNotItExist(existingEmulators, versionName, systemImageName)
     }
     doLast {
-        println("starting emulator")
-        exec {
-            commandLine 'bash', '-c', '"$(dirname "$(which emulator)")"/emulator -avd ANDROID-N'
-        }
+        startEmulator(versionName)
     }
 }
 
-task createEmulatorAndroidO(dependsOn: listEmulators) {
+task createAndRunEmulatorAndroidO(dependsOn: listEmulators) {
     group androidGroup
     description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-O)'
     String versionName = "ANDROID-O"
+    String systemImageName = "system-images;android-27;google_apis_playstore;x86"
     doFirst {
-        if(listEmulators.output().contains(versionName)) {
-            println("emulator exists")
-        } else {
-            println("emulator not found, creating a new emulator")
-            exec {
-                commandLine 'bash', '-c', 'echo no | avdmanager create avd -n "ANDROID-O" -c 1000M -k "system-images;android-27;google_apis_playstore;x86"'
-            }
-        }
+        String existingEmulators = listEmulators.output()
+        createEmulatorIfItDoesNotItExist(existingEmulators, versionName, systemImageName)
     }
     doLast {
-        println("starting emulator")
+        startEmulator(versionName)
+    }
+}
+
+task listInstalledSDKPackages(type: Exec) {
+    group androidGroup
+    description ''
+    commandLine 'bash', '-c', 'sdkmanager --list --channel=0'
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString().split("Available Packages:")[0]
+    }
+}
+
+task installSDKPackages(dependsOn: listInstalledSDKPackages) {
+    String androidOImage = "system-images;android-27;google_apis_playstore;x86"
+    String androidNImage = "system-images;android-25;google_apis_playstore;x86"
+    String androidMImage = "system-images;android-23;google_apis;x86"
+    group androidGroup
+    doLast {
+        String installedPackages = listInstalledSDKPackages.output()
+        checkAndInstallSDKPackage(installedPackages, androidOImage)
+        checkAndInstallSDKPackage(installedPackages, androidNImage)
+        checkAndInstallSDKPackage(installedPackages, androidMImage)
+    }
+}
+
+task launchAndroidMEmulator {
+    dependsOn 'installSDKPackages'
+    dependsOn 'createAndRunEmulatorAndroidM'
+    tasks.findByName('createAndRunEmulatorAndroidM').mustRunAfter 'installSDKPackages'
+}
+
+task launchAndroidNEmulator {
+    dependsOn 'installSDKPackages'
+    dependsOn 'createAndRunEmulatorAndroidN'
+    tasks.findByName('createAndRunEmulatorAndroidN').mustRunAfter 'installSDKPackages'
+}
+
+task launchAndroidOEmulator {
+    dependsOn 'installSDKPackages'
+    dependsOn 'createAndRunEmulatorAndroidO'
+    tasks.findByName('createAndRunEmulatorAndroidO').mustRunAfter 'installSDKPackages'
+}
+
+def checkAndInstallSDKPackage(String installedPackages, String packageToInstall) {
+    if(!installedPackages.contains(packageToInstall)) {
+        println("Installing " + packageToInstall)
         exec {
-            commandLine 'bash', '-c', '"$(dirname "$(which emulator)")"/emulator -avd ANDROID-O'
+            executable "sdkmanager"
+            args packageToInstall
+        }
+    } else {
+        println(packageToInstall + " is already installed")
+    }
+}
+
+def createEmulatorIfItDoesNotItExist(String existingEmulators, String versionName, String systemImage) {
+    println(existingEmulators)
+    if(existingEmulators.contains(versionName)) {
+        println("emulator " + versionName + " exists")
+    } else {
+        println("emulator not found, creating a new " + versionName + " emulator")
+        exec {
+            String command = 'echo no | avdmanager create avd -n "' + versionName + '" -c 1000M -k "' + systemImage + '"'
+            commandLine 'bash', '-c', command
         }
     }
 }
 
-
+def startEmulator(String emulatorName) {
+    println("starting " + emulatorName + " emulator")
+    exec {
+        String command = '"$(dirname "$(which emulator)")"/emulator -avd ' + emulatorName
+        commandLine 'bash', '-c', command
+    }
+}
