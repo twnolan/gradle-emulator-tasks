@@ -1,7 +1,15 @@
 String androidGroup = 'Android Pre-Test Commands'
+String androidSubGroup = 'Android Sub Commands'
+String defaultDescription = "Check if required emulator imgae is installed, install if not, create emulator from image, start emulator "
+String createAndRunMessage = "Starts emulator, creates and starts emulator if it does not exist "
+
+// Android version details in form of [ VERSION_NAME, EMULATOR_IMAGE_NAME ]
+String[] androidImageN = ["ANDROID-O", "system-images;android-27;google_apis_playstore;x86"]
+String[] androidImageNMinus1 = ["ANDROID-N", "system-images;android-25;google_apis_playstore;x86"]
+String[] androidImageNMinus2 = ["ANDROID-M", "system-images;android-23;google_apis;x86"]
 
 task listEmulators(type: Exec) {
-    group androidGroup
+    group androidSubGroup
     description 'lists all emulators on host machine'
     commandLine 'bash', '-c', 'avdmanager list avd | grep "Name"'
     standardOutput = new ByteArrayOutputStream()
@@ -11,50 +19,44 @@ task listEmulators(type: Exec) {
 }
 
 task createAndRunEmulatorAndroidM(dependsOn: listEmulators) {
-    group androidGroup
-    description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-M)'
-    String versionName = "ANDROID-M"
-    String systemImageName = "system-images;android-23;google_apis;x86"
+    group androidSubGroup
+    description createAndRunMessage + androidImageNMinus2[0]
     doFirst {
         String existingEmulators = listEmulators.output()
-        createEmulatorIfItDoesNotItExist(existingEmulators, versionName, systemImageName)
+        createEmulatorIfItDoesNotItExist(existingEmulators, androidImageNMinus2[0], androidImageNMinus2[1])
     }
     doLast {
-        startEmulator(versionName)
+        startEmulator(androidImageNMinus2[0])
     }
 }
 
 task createAndRunEmulatorAndroidN(dependsOn: listEmulators) {
-    group androidGroup
-    description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-N)'
-    String versionName = "ANDROID-N"
-    String systemImageName = "system-images;android-25;google_apis_playstore;x86"
+    group androidSubGroup
+    description createAndRunMessage + androidImageNMinus1[0]
     doFirst {
         String existingEmulators = listEmulators.output()
-        createEmulatorIfItDoesNotItExist(existingEmulators, versionName, systemImageName)
+        createEmulatorIfItDoesNotItExist(existingEmulators, androidImageNMinus1[0], androidImageNMinus1[1])
     }
     doLast {
-        startEmulator(versionName)
+        startEmulator(androidImageNMinus1[0])
     }
 }
 
 task createAndRunEmulatorAndroidO(dependsOn: listEmulators) {
-    group androidGroup
-    description 'starts emulator, creates and starts emulator if it does not exist (ANDROID-O)'
-    String versionName = "ANDROID-O"
-    String systemImageName = "system-images;android-27;google_apis_playstore;x86"
+    group androidSubGroup
+    description  createAndRunMessage + androidImageN[0]
     doFirst {
         String existingEmulators = listEmulators.output()
-        createEmulatorIfItDoesNotItExist(existingEmulators, versionName, systemImageName)
+        createEmulatorIfItDoesNotItExist(existingEmulators, androidImageN[0], androidImageN[1])
     }
     doLast {
-        startEmulator(versionName)
+        startEmulator(androidImageN[0])
     }
 }
 
 task listInstalledSDKPackages(type: Exec) {
-    group androidGroup
-    description ''
+    group androidSubGroup
+    description "List all installed android sdk packages"
     commandLine 'bash', '-c', 'sdkmanager --list --channel=0'
     standardOutput = new ByteArrayOutputStream()
     ext.output = {
@@ -63,31 +65,35 @@ task listInstalledSDKPackages(type: Exec) {
 }
 
 task installSDKPackages(dependsOn: listInstalledSDKPackages) {
-    String androidOImage = "system-images;android-27;google_apis_playstore;x86"
-    String androidNImage = "system-images;android-25;google_apis_playstore;x86"
-    String androidMImage = "system-images;android-23;google_apis;x86"
-    group androidGroup
+    group androidSubGroup
+    description "Install missing emulator packages"
     doLast {
         String installedPackages = listInstalledSDKPackages.output()
-        checkAndInstallSDKPackage(installedPackages, androidOImage)
-        checkAndInstallSDKPackage(installedPackages, androidNImage)
-        checkAndInstallSDKPackage(installedPackages, androidMImage)
+        checkAndInstallSDKPackage(installedPackages, androidImageN[1])
+        checkAndInstallSDKPackage(installedPackages, androidImageNMinus1[1])
+        checkAndInstallSDKPackage(installedPackages, androidImageNMinus2[1])
     }
 }
 
 task launchAndroidMEmulator {
+    group androidGroup
+    description defaultDescription + androidImageNMinus2[0]
     dependsOn 'installSDKPackages'
     dependsOn 'createAndRunEmulatorAndroidM'
     tasks.findByName('createAndRunEmulatorAndroidM').mustRunAfter 'installSDKPackages'
 }
 
 task launchAndroidNEmulator {
+    group androidGroup
+    description defaultDescription + androidImageNMinus1[0]
     dependsOn 'installSDKPackages'
     dependsOn 'createAndRunEmulatorAndroidN'
     tasks.findByName('createAndRunEmulatorAndroidN').mustRunAfter 'installSDKPackages'
 }
 
 task launchAndroidOEmulator {
+    group androidGroup
+    description defaultDescription + androidImageN[0]
     dependsOn 'installSDKPackages'
     dependsOn 'createAndRunEmulatorAndroidO'
     tasks.findByName('createAndRunEmulatorAndroidO').mustRunAfter 'installSDKPackages'
@@ -121,7 +127,7 @@ def createEmulatorIfItDoesNotItExist(String existingEmulators, String versionNam
 def startEmulator(String emulatorName) {
     println("starting " + emulatorName + " emulator")
     exec {
-        String command = '"$(dirname "$(which emulator)")"/emulator -avd ' + emulatorName
+        String command = '"$(dirname "$(which emulator)")"/emulator -avd ' + emulatorName +' &'
         commandLine 'bash', '-c', command
     }
 }
